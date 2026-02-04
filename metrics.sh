@@ -1,35 +1,43 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-# -------- Battery --------
-BATTERY_PERCENT="null"
-BATTERY_TEMP_C="null"
+# ---------------- Battery ----------------
+BATTERY_JSON=$(termux-battery-status 2>/dev/null)
 
-if [ -f /sys/class/power_supply/battery/capacity ]; then
-  BATTERY_PERCENT=$(cat /sys/class/power_supply/battery/capacity)
+BATTERY_PERCENT=$(echo "$BATTERY_JSON" | awk -F'[:,]' '/"percentage"/ {print $2}')
+BATTERY_TEMP_RAW=$(echo "$BATTERY_JSON" | awk -F'[:,]' '/"temperature"/ {print $2}')
+
+if [ -n "$BATTERY_TEMP_RAW" ]; then
+  BATTERY_TEMP_C=$(awk "BEGIN { printf \"%.1f\", $BATTERY_TEMP_RAW/10 }")
+else
+  BATTERY_TEMP_C="null"
 fi
 
-if [ -f /sys/class/power_supply/battery/temp ]; then
-  RAW_TEMP=$(cat /sys/class/power_supply/battery/temp)
-  BATTERY_TEMP_C=$(awk "BEGIN { printf \"%.1f\", $RAW_TEMP/10 }")
-fi
+[ -z "$BATTERY_PERCENT" ] && BATTERY_PERCENT="null"
 
-# -------- CPU (snapshot, not loadavg) --------
-CPU_USAGE=$(top -bn1 | grep -m1 "CPU")
+# ---------------- CPU (snapshot) ----------------
+# Android does not expose loadavg to apps anymore
+CPU_SNAPSHOT=$(top -bn1 | head -n 5 | tr '\n' ' ')
 
-# -------- Memory (MB) --------
+# ---------------- Memory ----------------
+# Still allowed on Android 14
 MEM_TOTAL=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
 MEM_AVAILABLE=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
 MEM_USED=$((MEM_TOTAL - MEM_AVAILABLE))
 
-# -------- Uptime (via command, not /proc) --------
-UPTIME_SECONDS=$(uptime | awk -F'( |,|:)+' '{print ($3*3600)+($4*60)}')
+# ---------------- Uptime ----------------
+# Use command, not /proc
+UPTIME_SECONDS=$(uptime | awk '{print int($3*3600 + $5*60)}')
 
-# -------- Output --------
+# ---------------- Output ----------------
 cat <<EOF
 {
-  "battery_percent": $BATTERY_PERCENT,
-  "battery_temp_c": $BATTERY_TEMP_C,
-  "cpu_snapshot": "$CPU_USAGE",
+  "battery": {
+    "percent": $BATTERY_PERCENT,
+    "temperature_c": $BATTERY_TEMP_C
+  },
+  "cpu": {
+    "snapshot": "$CPU_SNAPSHOT"
+  },
   "memory_mb": {
     "total": $MEM_TOTAL,
     "used": $MEM_USED,
