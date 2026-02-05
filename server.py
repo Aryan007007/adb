@@ -6,12 +6,20 @@ METRICS_SCRIPT = "/data/data/com.termux/files/home/monitor/adb/metrics.sh"
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        output = subprocess.check_output([METRICS_SCRIPT])
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Cache-Control", "no-cache")
-        self.end_headers()
-        self.wfile.write(output)
+        try:
+            output = subprocess.check_output(
+                ["bash", METRICS_SCRIPT],
+                stderr=subprocess.STDOUT
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(output)
+        except subprocess.CalledProcessError as e:
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(e.output)
 
     def log_message(self, format, *args):
         return  # silence logs
