@@ -7,7 +7,7 @@ BATTERY_PERCENT=$(echo "$BATTERY_JSON" | awk -F'[:,]' '/"percentage"/ {print $2}
 BATTERY_TEMP_RAW=$(echo "$BATTERY_JSON" | awk -F'[:,]' '/"temperature"/ {print $2}')
 
 if [ -n "$BATTERY_TEMP_RAW" ]; then
-  BATTERY_TEMP_C=$(awk "BEGIN { printf \"%.1f\", $BATTERY_TEMP_RAW/10 }")
+  BATTERY_TEMP_C=$(awk "BEGIN { printf \"%.1f\", $BATTERY_TEMP_RAW }")
 else
   BATTERY_TEMP_C="null"
 fi
@@ -46,3 +46,4 @@ cat <<EOF
   "uptime_seconds": $UPTIME_SECONDS
 }
 EOF
+
